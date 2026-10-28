@@ -62,6 +62,10 @@ public class GreeterService extends Service {
         if (android.os.SystemClock.elapsedRealtime() < 3 * 60_000) {
             handler.postDelayed(this::restoreAudio, 4000);
             schedule();
+            // Some head units open their factory launcher on every cold boot, ignoring the
+            // default home app. Come back to the front once it has finished starting.
+            handler.postDelayed(() -> bringHome(this), 6000);
+            handler.postDelayed(() -> bringHome(this), 15000);
         }
     }
 
@@ -291,9 +295,21 @@ public class GreeterService extends Service {
     }
 
     /** Starts the service at boot even if the launcher is not shown yet. */
+    /** Shows this launcher's home screen (allowed from the background with the overlay permission). */
+    static void bringHome(Context c) {
+        try {
+            Intent home = new Intent(c, MainActivity.class);
+            home.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            c.startActivity(home);
+        } catch (Exception e) {
+            Log.w(TAG, "could not bring home to front", e);
+        }
+    }
+
     public static class BootReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context c, Intent i) {
+            bringHome(c);
             c.startService(new Intent(c, GreeterService.class));
             c.startService(new Intent(c, VolumeOverlay.class));
             c.startService(new Intent(c, Odometer.class));
