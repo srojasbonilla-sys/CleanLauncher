@@ -33,6 +33,8 @@ public class Odometer extends Service implements LocationListener {
     public void onCreate() {
         super.onCreate();
         lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        // A fresh boot of the head unit (the car was off for a while) starts a new trip.
+        if (android.os.SystemClock.elapsedRealtime() < 3 * 60_000) resetTrip(this);
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             try {
                 lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000, 10, this);
@@ -56,7 +58,10 @@ public class Odometer extends Service implements LocationListener {
             float kmh = d / secs * 3.6f;
             boolean moving = (l.hasSpeed() ? l.getSpeed() * 3.6f : kmh) > 4;
             // Count only real driving; drop parked drift and impossible jumps.
-            if (moving && kmh < 200) pendingMeters += d;
+            if (moving && kmh < 200) {
+                pendingMeters += d;
+                addToTrip(d, Math.min(secs, 10), l.hasSpeed() ? l.getSpeed() * 3.6f : kmh);
+            }
         }
         last = l;
         if (pendingMeters >= 100) { // persist every 100 m
@@ -120,5 +125,41 @@ public class Odometer extends Service implements LocationListener {
     /** Km left until the next oil change (negative when overdue). */
     static int remainingKm(Context c) {
         return lastChangeKm(c) + intervalKm(c) - currentKm(c);
+    }
+
+    // ---------- Current trip (speedometer screen) ----------
+
+    private void addToTrip(float meters, float movingSecs, float kmh) {
+        SharedPreferences p = prefs(this);
+        p.edit()
+                .putFloat("trip_m", p.getFloat("trip_m", 0) + meters)
+                .putFloat("trip_moving_s", p.getFloat("trip_moving_s", 0) + movingSecs)
+                .putFloat("trip_max", Math.max(p.getFloat("trip_max", 0), Math.min(kmh, 200)))
+                .apply();
+    }
+
+    static void resetTrip(Context c) {
+        prefs(c).edit()
+                .putLong("trip_start", System.currentTimeMillis())
+                .putFloat("trip_m", 0).putFloat("trip_moving_s", 0).putFloat("trip_max", 0)
+                .apply();
+    }
+
+    static long tripStart(Context c) {
+        return prefs(c).getLong("trip_start", System.currentTimeMillis());
+    }
+
+    static float tripKm(Context c) {
+        return prefs(c).getFloat("trip_m", 0) / 1000f;
+    }
+
+    static float tripMaxKmh(Context c) {
+        return prefs(c).getFloat("trip_max", 0);
+    }
+
+    /** Average while moving (stops at traffic lights do not drag it down). */
+    static float tripAvgKmh(Context c) {
+        float s = prefs(c).getFloat("trip_moving_s", 0);
+        return s < 30 ? 0 : tripKm(c) / (s / 3600f);
     }
 }

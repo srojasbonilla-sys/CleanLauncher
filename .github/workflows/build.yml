@@ -24,10 +24,10 @@ jobs:
       - name: Build
         env:
           BUILD_TOOLS: "36.0.0"
-        run: sh build.sh
+        run: VARIANT=share sh build.sh
 
       - uses: actions/upload-artifact@v4
         with:
           name: CleanLauncher-${{ github.sha }}
-          path: build/CleanLauncher.apk
+          path: build/CleanLauncher-compartir.apk
           if-no-files-found: error

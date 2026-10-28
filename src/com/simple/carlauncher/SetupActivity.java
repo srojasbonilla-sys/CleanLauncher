@@ -109,7 +109,7 @@ public class SetupActivity extends Activity {
         card.addView(tip);
 
         voice = toggle(card, "Saludo por voz al encender el carro", Profile.voiceEnabled(this));
-        picoPlaca = toggle(card, "Recordar pico y placa los miércoles (Quito)", Profile.picoPlacaEnabled(this));
+        picoPlaca = toggle(card, "Recordar pico y placa los jueves (Quito)", Profile.picoPlacaEnabled(this));
         showPhoto();
         return card;
     }

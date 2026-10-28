@@ -39,6 +39,7 @@ public class MainActivity extends Activity implements NowPlaying.Listener {
     private ImageView car, carLights;
     private boolean hasLightsImage;
     private TextView oilInfo;
+    private Speedometer speedometer;
     private boolean createdDark;
     private String createdProfile;
 
@@ -66,8 +67,8 @@ public class MainActivity extends Activity implements NowPlaying.Listener {
 
         LinearLayout middle = new LinearLayout(this);
         middle.setOrientation(LinearLayout.VERTICAL);
-        middle.addView(buildClockCard(), vweight(0.62f, 0));
-        middle.addView(buildFmCard(), vweight(1.38f, dp(12)));
+        middle.addView(buildClockCard(), vweight(0.95f, 0));
+        middle.addView(buildFmCard(), vweight(1.05f, dp(12)));
         cards.addView(middle, weight(1f, dp(12)));
 
         cards.addView(buildMusicCard(), weight(1.05f, dp(12)));
@@ -81,7 +82,7 @@ public class MainActivity extends Activity implements NowPlaying.Listener {
         createdDark = Ui.isDark(this);
         createdProfile = profileStamp();
         // Shared installs: ask for name, car photo and permissions on first start.
-        if (!Profile.isSetupDone(this) && Profile.bundledCar(this, false) == 0) {
+        if (!Profile.isSetupDone(this)) {
             startActivity(new Intent(this, SetupActivity.class));
         }
         if (Profile.isNwd(this)) startService(new Intent(this, VolumeOverlay.class));
@@ -246,40 +247,52 @@ public class MainActivity extends Activity implements NowPlaying.Listener {
             return;
         }
         int left = Odometer.remainingKm(this);
-        oilInfo.setText(left < 0 ? "Aceite: ¡ya toca el cambio!" : "Aceite: faltan " + OilActivity.fmt(left) + " km");
+        oilInfo.setText(left < 0 ? "¡Cambiar aceite!" : "Aceite: " + OilActivity.fmt(left) + " km");
         oilBg.setColor(left < 0 ? 0xCCE53935 : left <= Odometer.WARN_KM ? 0xCCFF9800 : 0x26FFFFFF);
     }
 
     // ---------- Clock ----------
 
     private View buildClockCard() {
+        // GPS speedometer on the left; time, date and the oil pill on the right.
         LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setGravity(Gravity.CENTER);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
         card.setBackground(Ui.card(this));
+        card.setPadding(dp(6), dp(6), dp(10), dp(6));
+
+        speedometer = new Speedometer(this);
+        speedometer.setOnClickListener(v -> startActivity(new Intent(this, SpeedActivity.class)));
+        card.addView(speedometer, new LinearLayout.LayoutParams(0, -1, 1.1f));
+
+        LinearLayout info = new LinearLayout(this);
+        info.setOrientation(LinearLayout.VERTICAL);
+        info.setGravity(Gravity.CENTER);
+        card.addView(info, new LinearLayout.LayoutParams(0, -2, 1f));
 
         TextClock time = new TextClock(this);
         time.setFormat24Hour("HH:mm");
         time.setFormat12Hour("hh:mm");
-        time.setTextSize(40);
+        time.setTextSize(32);
         time.setTextColor(Color.WHITE);
         time.setTypeface(Typeface.DEFAULT_BOLD);
         time.setIncludeFontPadding(false);
         time.setGravity(Gravity.CENTER);
-        card.addView(time);
+        info.addView(time);
 
         TextClock date = new TextClock(this);
-        date.setFormat24Hour("EEEE, d 'de' MMMM");
-        date.setFormat12Hour("EEEE, d 'de' MMMM");
-        date.setTextSize(14);
+        date.setFormat24Hour("EEE d 'de' MMM");
+        date.setFormat12Hour("EEE d 'de' MMM");
+        date.setTextSize(13);
         date.setTextColor(0xCCFFFFFF);
-        date.setPadding(0, dp(6), 0, 0);
+        date.setPadding(0, dp(4), 0, 0);
         date.setGravity(Gravity.CENTER);
-        card.addView(date);
+        info.addView(date);
 
         // Oil-change status pill; opens the oil screen.
-        oilInfo = Ui.text(this, "", 13, Color.WHITE);
-        oilInfo.setPadding(dp(14), dp(6), dp(14), dp(6));
+        oilInfo = Ui.text(this, "", 12, Color.WHITE);
+        oilInfo.setPadding(dp(10), dp(5), dp(10), dp(5));
+        oilInfo.setGravity(Gravity.CENTER);
         oilBg = new GradientDrawable();
         oilBg.setCornerRadius(dp(14));
         oilInfo.setBackground(oilBg);
@@ -287,10 +300,10 @@ public class MainActivity extends Activity implements NowPlaying.Listener {
         oilInfo.setOnClickListener(v -> startActivity(new Intent(this, OilActivity.class)));
         LinearLayout.LayoutParams olp = new LinearLayout.LayoutParams(-2, -2);
         olp.topMargin = dp(8);
-        card.addView(oilInfo, olp);
+        info.addView(oilInfo, olp);
 
-        Ui.pressable(card, 0.97f);
-        card.setOnClickListener(v -> openSettings());
+        Ui.pressable(info, 0.97f);
+        info.setOnClickListener(v -> openSettings());
         return card;
     }
 
@@ -454,6 +467,8 @@ public class MainActivity extends Activity implements NowPlaying.Listener {
         dock.addView(dockIcon(R.drawable.ic_compass, this::openMaps), weight(1f, 0));
         dock.addView(dockIcon(R.drawable.ic_bluetooth, this::openBluetooth), weight(1f, 0));
         dock.addView(dockIcon(R.drawable.ic_radio, this::openRadio), weight(1f, 0));
+        dock.addView(dockIcon(R.drawable.ic_speed,
+                () -> startActivity(new Intent(this, SpeedActivity.class))), weight(1f, 0));
 
         FrameLayout center = new FrameLayout(this);
         RingView ring = new RingView(this);
@@ -569,6 +584,7 @@ public class MainActivity extends Activity implements NowPlaying.Listener {
             requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
         }
         handler.post(periodic);
+        speedometer.start();
         if (Profile.isNwd(this)) handler.post(radioPoll);
         nowPlaying.addListener(this);
         onNowPlayingChanged();
@@ -580,12 +596,16 @@ public class MainActivity extends Activity implements NowPlaying.Listener {
         unregisterReceiver(illReceiver);
         handler.removeCallbacks(periodic);
         handler.removeCallbacks(radioPoll);
+        speedometer.stop();
         nowPlaying.removeListener(this);
     }
 
     @Override
     public void onRequestPermissionsResult(int code, String[] perms, int[] results) {
-        if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) fetchWeather(true);
+        if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
+            fetchWeather(true);
+            speedometer.start();
+        }
     }
 
     @Override

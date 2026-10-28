@@ -81,13 +81,13 @@ echo "SDK $SDK | $PLATFORM | build-tools $BUILD_TOOLS | JDK $JAVA_MAJOR"
 # ---------- Build ----------
 rm -rf build && mkdir -p build/gen build/classes build/dex
 
-# VARIANT=share: build to give away. Leaves out the owner's car photos and recorded voice
+# VARIANT=share: build to give away. Leaves out the owner's recorded voice
 # clips (the app then uses the user's own photo and the device's text-to-speech).
 RES=res
 if [ "$VARIANT" = share ]; then
     RES=build/res-share
     cp -r res "$RES"
-    rm -f "$RES"/drawable-nodpi/optra*.png "$RES"/raw/v_*.mp3
+    rm -f "$RES"/raw/v_*.mp3
     rmdir "$RES"/raw "$RES"/drawable-nodpi 2>/dev/null || true
     APK_NAME=CleanLauncher-compartir.apk
 fi

@@ -76,6 +76,11 @@
             android:configChanges="orientation|screenSize|keyboardHidden|locale" />
 
         <activity
+            android:name=".SpeedActivity"
+            android:label="Velocímetro"
+            android:configChanges="orientation|screenSize|keyboardHidden|locale" />
+
+        <activity
             android:name=".OilActivity"
             android:label="Aceite"
             android:configChanges="orientation|screenSize|keyboardHidden|locale" />

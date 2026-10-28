@@ -31,7 +31,7 @@ final class Speech {
             case "v_greet_monday": return "¡Hola" + who + "! Arrancó la semana: hoy es lunes.";
             case "v_maintenance": return "Revisa el aceite, el agua del radiador y el líquido de frenos.";
             case "v_seatbelt": return "Ponte el cinturón de seguridad.";
-            case "v_picoplaca": return "Hoy es miércoles: recuerda el pico y placa.";
+            case "v_picoplaca": return "Hoy es jueves: recuerda el pico y placa.";
             case "v_careful": return "Maneja con cuidado. ¡Buen viaje!";
             case "v_oil_soon": return "Se acerca el cambio de aceite: quedan menos de quinientos kilómetros.";
             case "v_oil_due": return "Ya toca el cambio de aceite.";
