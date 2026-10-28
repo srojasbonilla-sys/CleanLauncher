@@ -35,7 +35,7 @@ final class Ui {
     static final String THEME_AUTO = "auto", THEME_LIGHT = "light", THEME_DARK = "dark";
 
     static String themeMode(Context c) {
-        return c.getSharedPreferences("ui", Context.MODE_PRIVATE).getString("theme", THEME_DARK); // black by default, like the speedometer
+        return c.getSharedPreferences("ui", Context.MODE_PRIVATE).getString("theme", THEME_AUTO);
     }
 
     static void setThemeMode(Context c, String mode) {
@@ -86,7 +86,7 @@ final class Ui {
     static GradientDrawable card(Context c) {
         boolean dark = isDark(c);
         GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                dark ? new int[]{0xFF111116, 0xFF0A0A0D} : new int[]{0x4D5B6CFF, 0x333B3FB8});
+                dark ? new int[]{0xFF17171E, 0xFF101015} : new int[]{0x4D5B6CFF, 0x333B3FB8});
         bg.setCornerRadius(dp(c, 18));
         bg.setStroke(dp(c, 1), dark ? 0x14FFFFFF : 0x337F9CFF);
         return bg;
