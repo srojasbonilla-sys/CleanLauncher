@@ -56,6 +56,7 @@ public class SpeedActivity extends Activity implements LocationListener {
     private boolean hasLightsImage, lightsShown, lastPolled;
 
     private boolean hasFix;
+    private final GpsSpeed gps = new GpsSpeed();
     private long lastFix;
     private int satsUsed, satsSeen;
 
@@ -337,12 +338,11 @@ public class SpeedActivity extends Activity implements LocationListener {
     public void onLocationChanged(Location l) {
         hasFix = true;
         lastFix = SystemClock.elapsedRealtime();
-        float kmh = l.hasSpeed() ? l.getSpeed() * 3.6f : 0;
-        if (kmh < 3) kmh = 0;
+        float kmh = gps.update(l); // falls back to distance/time when the GPS gives no speed
         gauge.setSpeed(Math.min(kmh, 250));
 
-        if (kmh >= 5 && l.hasBearing()) {
-            int b = Math.round(l.getBearing()) % 360;
+        int b = gps.bearing();
+        if (kmh >= 5 && b >= 0) {
             heading.setText(cardinal(b) + "  " + b + "°");
         } else if (kmh < 5) {
             heading.setText("Detenido");

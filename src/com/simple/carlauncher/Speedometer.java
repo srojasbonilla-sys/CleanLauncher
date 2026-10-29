@@ -46,6 +46,7 @@ final class Speedometer extends View implements LocationListener {
     private long lastFix;
     private ValueAnimator anim;
     private boolean running;
+    private final GpsSpeed gps = new GpsSpeed();
 
     Speedometer(Context c) {
         super(c);
@@ -102,9 +103,7 @@ final class Speedometer extends View implements LocationListener {
 
     @Override
     public void onLocationChanged(Location l) {
-        if (!l.hasSpeed()) return;
-        float kmh = l.getSpeed() * 3.6f;
-        if (kmh < 3) kmh = 0; // standing still: ignore GPS jitter
+        float kmh = gps.update(l); // falls back to distance/time when the GPS gives no speed
         hasFix = true;
         lastFix = SystemClock.elapsedRealtime();
         animateTo(Math.min(kmh, 250));
