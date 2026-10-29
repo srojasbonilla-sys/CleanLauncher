@@ -52,9 +52,9 @@ public class MainActivity extends Activity implements NowPlaying.Listener {
     private TextView fmBand, fmFreq, fmUnit;
     private ImageView art, playBtn;
     private TextView songSource, songTitle, songArtist;
-    // Music card mode: MP3 (USB player, retro boombox look; the default) or Bluetooth.
+    // Music card mode: Multimedia (USB player / music apps, record-player look; the default) or Bluetooth.
     private boolean musicMp3;
-    private BoomboxView boombox;
+    private TurntableView turntable;
     private View musicShade;
     private GradientDrawable musicBg;
     private TextView chipMp3, chipBt;
@@ -400,16 +400,16 @@ public class MainActivity extends Activity implements NowPlaying.Listener {
                 new int[]{0x33000000, 0x00000000, 0xCC100A30}));
         card.addView(musicShade, new FrameLayout.LayoutParams(-1, -1));
 
-        // MP3 look: retro boombox between the mode chips and the song info.
-        boombox = new BoomboxView(this);
+        // Multimedia look: a record player between the mode chips and the song info.
+        turntable = new TurntableView(this);
         FrameLayout.LayoutParams blp = new FrameLayout.LayoutParams(-1, -1);
         blp.topMargin = dp(58);
         blp.bottomMargin = dp(150);
-        card.addView(boombox, blp);
+        card.addView(turntable, blp);
 
         // Mode chips (like Analógico / Digital on the speedometer).
         LinearLayout chips = new LinearLayout(this);
-        chipMp3 = musicChip("MP3", true);
+        chipMp3 = musicChip("Multimedia", true);
         chipBt = musicChip("Bluetooth", false);
         chips.addView(chipMp3);
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(-2, -2);
@@ -479,7 +479,7 @@ public class MainActivity extends Activity implements NowPlaying.Listener {
                 : Ui.pick(this, new int[]{0xFF6A3BFF, 0xFFC04DE8, 0xFF2B1A7A},
                         new int[]{0xFF2E1A55, 0xFF1A1030, 0xFF0A0A0E}));
         musicBg.setStroke(musicMp3 ? dp(1) : 0, 0x22FFFFFF);
-        boombox.setVisibility(musicMp3 ? View.VISIBLE : View.GONE);
+        turntable.setVisibility(musicMp3 ? View.VISIBLE : View.GONE);
         art.setVisibility(musicMp3 ? View.GONE : View.VISIBLE);
         musicShade.setVisibility(musicMp3 ? View.GONE : View.VISIBLE);
         songSource.setVisibility(musicMp3 ? View.VISIBLE : View.GONE);
@@ -502,11 +502,12 @@ public class MainActivity extends Activity implements NowPlaying.Listener {
         NowPlaying.Track t = nowPlaying.track(s);
         boolean empty = t == null || t.title.isEmpty();
         songSource.setText(nowPlaying.label(s).toUpperCase());
-        songTitle.setText(empty ? (musicMp3 ? "Reproductor MP3" : "Bluetooth") : t.title);
+        songTitle.setText(empty ? (musicMp3 ? "Multimedia" : "Bluetooth") : t.title);
         songArtist.setText(empty ? (musicMp3 ? "Toca para abrir tu música" : "Conecta tu celular") : t.artist);
         playBtn.setImageResource(t != null && t.playing ? R.drawable.ic_pause : R.drawable.ic_play);
-        boombox.setPlaying(musicMp3 && t != null && t.playing);
-        if (musicMp3) return; // the boombox replaces the album art
+        turntable.setPlaying(musicMp3 && t != null && t.playing);
+        turntable.setArt(t != null ? t.art : null);
+        if (musicMp3) return; // the record player replaces the big album art
 
         if (t != null && t.art != null) {
             art.setPadding(0, 0, 0, 0);
