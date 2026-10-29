@@ -85,6 +85,18 @@
             android:label="Aceite"
             android:configChanges="orientation|screenSize|keyboardHidden|locale" />
 
+        <service
+            android:name=".HomeGuardService"
+            android:label="@string/home_guard_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/home_guard" />
+        </service>
+
         <receiver android:name=".GreeterService$BootReceiver">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

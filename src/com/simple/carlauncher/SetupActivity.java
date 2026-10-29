@@ -34,7 +34,7 @@ public class SetupActivity extends Activity {
     private EditText name;
     private ImageView carPreview;
     private Switch voice, picoPlaca;
-    private TextView homeBtn, locationBtn, notifBtn, overlayBtn;
+    private TextView homeBtn, guardBtn, locationBtn, notifBtn, overlayBtn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -122,6 +122,9 @@ public class SetupActivity extends Activity {
 
         homeBtn = button("", 0x334F7BFF, () -> openSettings(new Intent(Settings.ACTION_HOME_SETTINGS)));
         card.addView(spaced(homeBtn));
+        // For units whose Home button always opens the factory launcher.
+        guardBtn = button("", 0x334F7BFF, () -> openSettings(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
+        card.addView(spaced(guardBtn));
         locationBtn = button("", 0x334F7BFF,
                 () -> requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1));
         card.addView(spaced(locationBtn));
@@ -236,6 +239,7 @@ public class SetupActivity extends Activity {
         super.onResume();
         boolean isHome = getPackageName().equals(homePackage());
         homeBtn.setText(check(isHome) + "Usar como pantalla de inicio");
+        guardBtn.setText(check(HomeGuardService.isEnabled(this)) + "Botón ○ y encendido abren Inicio");
         locationBtn.setText(check(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) + "Ubicación (para el clima)");
         String listeners = Settings.Secure.getString(getContentResolver(), "enabled_notification_listeners");
