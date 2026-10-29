@@ -34,7 +34,7 @@ public class SetupActivity extends Activity {
     private EditText name;
     private ImageView carPreview;
     private Switch voice, picoPlaca;
-    private TextView homeBtn, guardBtn, locationBtn, notifBtn, overlayBtn;
+    private TextView homeBtn, guardBtn, pickBtn, locationBtn, notifBtn, overlayBtn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -125,6 +125,8 @@ public class SetupActivity extends Activity {
         // For units whose Home button always opens the factory launcher.
         guardBtn = button("", 0x334F7BFF, () -> openSettings(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
         card.addView(spaced(guardBtn));
+        pickBtn = button("", 0x334F7BFF, this::pickFactoryMenu);
+        card.addView(spaced(pickBtn));
         locationBtn = button("", 0x334F7BFF,
                 () -> requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1));
         card.addView(spaced(locationBtn));
@@ -186,6 +188,55 @@ public class SetupActivity extends Activity {
         return s;
     }
 
+    /**
+     * Lets the user mark which recently opened app is the factory menu, for units whose menu is
+     * not a regular home screen. The user opens it once (with ○), comes back here and ticks it.
+     */
+    private void pickFactoryMenu() {
+        if (!HomeGuardService.isEnabled(this)) {
+            android.widget.Toast.makeText(this, "Primero activa \"Botón ○ y encendido abren Inicio\"",
+                    android.widget.Toast.LENGTH_LONG).show();
+            return;
+        }
+        java.util.Set<String> auto = HomeGuardService.findOtherHomes(this);
+        java.util.Set<String> chosen = HomeGuardService.chosen(this);
+        java.util.List<String> pkgs = new java.util.ArrayList<>();
+        for (String p : HomeGuardService.recent(this)) if (!auto.contains(p)) pkgs.add(p);
+        for (String p : chosen) if (!pkgs.contains(p)) pkgs.add(p);
+        if (pkgs.isEmpty()) {
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle("Menú de fábrica")
+                    .setMessage("Todavía no hay pantallas registradas. Presiona el botón ○ para que aparezca el menú "
+                            + "de fábrica, vuelve a Inicio y entra otra vez aquí.")
+                    .setPositiveButton("Entendido", null).show();
+            return;
+        }
+        PackageManager pm = getPackageManager();
+        String[] labels = new String[pkgs.size()];
+        boolean[] checked = new boolean[pkgs.size()];
+        for (int i = 0; i < pkgs.size(); i++) {
+            String label;
+            try {
+                label = pm.getApplicationLabel(pm.getApplicationInfo(pkgs.get(i), 0)).toString();
+            } catch (PackageManager.NameNotFoundException e) {
+                label = pkgs.get(i);
+            }
+            labels[i] = label + "\n" + pkgs.get(i);
+            checked[i] = chosen.contains(pkgs.get(i));
+        }
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("¿Cuál es el menú de fábrica? (las últimas pantallas abiertas)")
+                .setMultiChoiceItems(labels, checked, (d, which, on) -> checked[which] = on)
+                .setPositiveButton("Guardar", (d, w) -> {
+                    java.util.Set<String> out = new java.util.HashSet<>();
+                    for (int i = 0; i < pkgs.size(); i++) if (checked[i]) out.add(pkgs.get(i));
+                    HomeGuardService.setChosen(this, out);
+                    onResume();
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
     private void openSettings(Intent i) {
         try {
             startActivity(i);
@@ -240,6 +291,7 @@ public class SetupActivity extends Activity {
         boolean isHome = getPackageName().equals(homePackage());
         homeBtn.setText(check(isHome) + "Usar como pantalla de inicio");
         guardBtn.setText(check(HomeGuardService.isEnabled(this)) + "Botón ○ y encendido abren Inicio");
+        pickBtn.setText(check(!HomeGuardService.chosen(this).isEmpty()) + "Elegir el menú de fábrica a reemplazar");
         locationBtn.setText(check(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) + "Ubicación (para el clima)");
         String listeners = Settings.Secure.getString(getContentResolver(), "enabled_notification_listeners");

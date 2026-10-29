@@ -24,6 +24,10 @@ jobs:
       - name: Build
         env:
           BUILD_TOOLS: "36.0.0"
+          # Fixed key so each new APK installs over the previous one (keeps the settings).
+          KEYSTORE: signing/cleanlauncher.keystore
+          KEYSTORE_PASS: android
+          KEY_ALIAS: santy
         run: VARIANT=share sh build.sh
 
       - uses: actions/upload-artifact@v4
