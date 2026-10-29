@@ -57,6 +57,11 @@ public class GreeterService extends Service {
         f.addAction("com.bt.ACTION_BT_MUSIC_PAUSE");
         f.addAction("com.simple.carlauncher.TEST_CAR_ON"); // adb test hook
         registerReceiver(events, f);
+        // When the car is turned back on after a short stop the unit only wakes up (no reboot),
+        // and some units then show their factory launcher. Come back to the front on wake too.
+        android.content.IntentFilter wake = new android.content.IntentFilter(Intent.ACTION_SCREEN_ON);
+        wake.addAction(Intent.ACTION_USER_PRESENT);
+        registerReceiver(wakeReceiver, wake);
         // Right after boot, bring the last source back and greet. A plain restart of this app
         // (update, crash) must not touch the audio.
         if (android.os.SystemClock.elapsedRealtime() < 3 * 60_000) {
@@ -340,6 +345,7 @@ public class GreeterService extends Service {
         if (tts != null) tts.shutdown();
         super.onDestroy();
         unregisterReceiver(events);
+        unregisterReceiver(wakeReceiver);
         radio.unbind(this);
         sound.unbind(this);
         handler.removeCallbacksAndMessages(null);
@@ -353,6 +359,20 @@ public class GreeterService extends Service {
     }
 
     /** Starts the service at boot even if the launcher is not shown yet. */
+    private long lastWake;
+
+    private final BroadcastReceiver wakeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context c, Intent i) {
+            long now = android.os.SystemClock.elapsedRealtime();
+            if (now - lastWake < 30_000) return; // screen-on and user-present come together
+            lastWake = now;
+            Log.d(TAG, "wake: " + i.getAction());
+            handler.postDelayed(() -> bringHome(GreeterService.this), 1500);
+            handler.postDelayed(() -> bringHome(GreeterService.this), 6000);
+        }
+    };
+
     /** Shows this launcher's home screen (allowed from the background with the overlay permission). */
     static void bringHome(Context c) {
         try {
