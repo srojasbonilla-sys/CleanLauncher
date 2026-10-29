@@ -128,11 +128,11 @@ public class SetupActivity extends Activity {
         notifBtn = button("", 0x334F7BFF,
                 () -> openSettings(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")));
         card.addView(spaced(notifBtn));
-        if (Profile.isNwd(this)) {
-            overlayBtn = button("", 0x334F7BFF, () -> openSettings(new Intent(
-                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:" + getPackageName()))));
-            card.addView(spaced(overlayBtn));
-        }
+        // "Show over other apps": the volume overlay on NWD units, and on every unit what lets the
+        // launcher bring itself back to the front after a cold boot (Android 10+).
+        overlayBtn = button("", 0x334F7BFF, () -> openSettings(new Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:" + getPackageName()))));
+        card.addView(spaced(overlayBtn));
 
         TextView info = Ui.text(this, Profile.isNwd(this)
                 ? "Radio NWD detectada: radio FM, Bluetooth, ecualizador y aviso de volumen activados."
@@ -242,7 +242,8 @@ public class SetupActivity extends Activity {
         notifBtn.setText(check(listeners != null && listeners.contains(getPackageName()))
                 + "Ver la música de otras apps");
         if (overlayBtn != null) {
-            overlayBtn.setText(check(Settings.canDrawOverlays(this)) + "Aviso de volumen");
+            overlayBtn.setText(check(Settings.canDrawOverlays(this))
+                    + (Profile.isNwd(this) ? "Aviso de volumen e inicio automático" : "Iniciar solo al encender el radio"));
         }
     }
 
