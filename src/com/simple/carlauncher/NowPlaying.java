@@ -232,6 +232,21 @@ final class NowPlaying {
         playPause(current());
     }
 
+    /** Package of the music app with the active media session, or null. */
+    String appPackage() {
+        return controller != null ? controller.getPackageName() : null;
+    }
+
+    /** Sends a media key to whatever player is listening (used to resume after power-on). */
+    void sendPlayKey() {
+        mediaKey(KeyEvent.KEYCODE_MEDIA_PLAY);
+    }
+
+    /** Opens the factory USB/SD player (or the default music app). */
+    static void openMusicPlayer(Context c) {
+        openLocalPlayer(c);
+    }
+
     void skip(boolean next) {
         skip(current(), next);
     }

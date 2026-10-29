@@ -67,6 +67,11 @@ public class GreeterService extends Service {
             handler.postDelayed(() -> bringHome(this), 6000);
             handler.postDelayed(() -> bringHome(this), 15000);
         }
+        if (!Profile.isNwd(this)) {
+            // Remember whether multimedia was playing, so it can resume at the next power-on.
+            NowPlaying np = NowPlaying.get(this);
+            np.addListener(mediaWatcher);
+        }
     }
 
     @Override
@@ -136,7 +141,10 @@ public class GreeterService extends Service {
     }
 
     private void restoreAudio() {
-        if (!Profile.isNwd(this)) return; // NWD source handling only
+        if (!Profile.isNwd(this)) {
+            resumeMultimedia();
+            return;
+        }
         int src = prefs().getInt("last_source",
                 android.provider.Settings.System.getInt(getContentResolver(), "mcu_current_source", 0));
         Log.d(TAG, "restore audio source=" + src);
@@ -274,6 +282,55 @@ public class GreeterService extends Service {
         }
     }
 
+    // ---------- Multimedia resume (radios without the NWD services) ----------
+
+    private final NowPlaying.Listener mediaWatcher = () -> {
+        NowPlaying np = NowPlaying.get(GreeterService.this);
+        NowPlaying.Source s = np.current();
+        if (s == null) return;
+        boolean playing = np.track(s).playing;
+        SharedPreferences.Editor e = prefs().edit();
+        if (s == NowPlaying.Source.BT) {
+            e.putString("resume", playing ? "bt" : "");
+        } else if (playing) {
+            String pkg = s == NowPlaying.Source.APP ? np.appPackage() : null;
+            e.putString("resume", pkg != null ? "app:" + pkg : "local");
+        } else if (s == np.mp3Source()) {
+            e.putString("resume", ""); // paused by the user: stay quiet next time
+        }
+        e.apply();
+    };
+
+    /**
+     * After a cold boot, if music from the USB player (or a music app) was playing when the car
+     * was turned off, open that player, press play, and come back to the home screen.
+     */
+    private void resumeMultimedia() {
+        String what = prefs().getString("resume", "");
+        Log.d(TAG, "resume multimedia: " + what);
+        if (what.equals("local")) {
+            NowPlaying.openMusicPlayer(this);
+        } else if (what.startsWith("app:")) {
+            Intent i = getPackageManager().getLaunchIntentForPackage(what.substring(4));
+            if (i == null) return;
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                startActivity(i);
+            } catch (Exception ignored) {
+                return;
+            }
+        } else {
+            return;
+        }
+        NowPlaying np = NowPlaying.get(this);
+        handler.postDelayed(np::sendPlayKey, 3000);
+        handler.postDelayed(() -> {
+            // Some players only resume on a second press once their files are scanned.
+            if (!np.track(np.mp3Source()).playing) np.sendPlayKey();
+        }, 6500);
+        handler.postDelayed(() -> bringHome(this), 8000);
+    }
+
     private SharedPreferences prefs() {
         return getSharedPreferences("greeter", MODE_PRIVATE);
     }
@@ -286,6 +343,7 @@ public class GreeterService extends Service {
         radio.unbind(this);
         sound.unbind(this);
         handler.removeCallbacksAndMessages(null);
+        NowPlaying.get(this).removeListener(mediaWatcher);
         if (player != null) player.release();
     }
 
