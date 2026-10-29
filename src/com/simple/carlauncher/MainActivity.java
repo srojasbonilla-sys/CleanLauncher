@@ -52,6 +52,12 @@ public class MainActivity extends Activity implements NowPlaying.Listener {
     private TextView fmBand, fmFreq, fmUnit;
     private ImageView art, playBtn;
     private TextView songSource, songTitle, songArtist;
+    // Music card mode: MP3 (USB player, retro boombox look; the default) or Bluetooth.
+    private boolean musicMp3;
+    private BoomboxView boombox;
+    private View musicShade;
+    private GradientDrawable musicBg;
+    private TextView chipMp3, chipBt;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -378,32 +384,45 @@ public class MainActivity extends Activity implements NowPlaying.Listener {
     // ---------- Music (any source) ----------
 
     private View buildMusicCard() {
+        musicMp3 = getSharedPreferences("ui", MODE_PRIVATE).getBoolean("music_mp3", true);
         FrameLayout card = new FrameLayout(this);
-        GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                Ui.pick(this, new int[]{0xFF6A3BFF, 0xFFC04DE8, 0xFF2B1A7A},
-                        new int[]{0xFF2E1A55, 0xFF1A1030, 0xFF0A0A0E}));
-        bg.setCornerRadius(dp(18));
-        card.setBackground(bg);
+        musicBg = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0, 0});
+        musicBg.setCornerRadius(dp(18));
+        card.setBackground(musicBg);
         card.setClipToOutline(true);
 
+        // Bluetooth look: album art (or a big icon) under a dark shade.
         art = new ImageView(this);
         art.setScaleType(ImageView.ScaleType.CENTER_CROP);
         card.addView(art, new FrameLayout.LayoutParams(-1, -1));
-
-        View shade = new View(this);
-        shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+        musicShade = new View(this);
+        musicShade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{0x33000000, 0x00000000, 0xCC100A30}));
-        card.addView(shade, new FrameLayout.LayoutParams(-1, -1));
+        card.addView(musicShade, new FrameLayout.LayoutParams(-1, -1));
 
-        songSource = Ui.text(this, "MÚSICA", 12, Color.WHITE);
+        // MP3 look: retro boombox between the mode chips and the song info.
+        boombox = new BoomboxView(this);
+        FrameLayout.LayoutParams blp = new FrameLayout.LayoutParams(-1, -1);
+        blp.topMargin = dp(58);
+        blp.bottomMargin = dp(150);
+        card.addView(boombox, blp);
+
+        // Mode chips (like Analógico / Digital on the speedometer).
+        LinearLayout chips = new LinearLayout(this);
+        chipMp3 = musicChip("MP3", true);
+        chipBt = musicChip("Bluetooth", false);
+        chips.addView(chipMp3);
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(-2, -2);
+        clp.leftMargin = dp(8);
+        chips.addView(chipBt, clp);
+        FrameLayout.LayoutParams chlp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.START);
+        chlp.setMargins(dp(14), dp(14), 0, 0);
+        card.addView(chips, chlp);
+        // Source label (USB, app name…) kept for the MP3 side, small, top right.
+        songSource = Ui.text(this, "", 11, 0x99FFFFFF);
         songSource.setLetterSpacing(0.1f);
-        songSource.setPadding(dp(12), dp(5), dp(12), dp(5));
-        GradientDrawable chip = new GradientDrawable();
-        chip.setColor(0x40000000);
-        chip.setCornerRadius(dp(14));
-        songSource.setBackground(chip);
-        FrameLayout.LayoutParams slp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.START);
-        slp.setMargins(dp(14), dp(14), 0, 0);
+        FrameLayout.LayoutParams slp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.END);
+        slp.setMargins(0, dp(22), dp(16), 0);
         card.addView(songSource, slp);
 
         LinearLayout bottom = new LinearLayout(this);
@@ -418,31 +437,76 @@ public class MainActivity extends Activity implements NowPlaying.Listener {
 
         LinearLayout controls = new LinearLayout(this);
         controls.setGravity(Gravity.CENTER);
-        controls.addView(Ui.iconButton(this, R.drawable.ic_prev, 50, false, () -> nowPlaying.skip(false)),
-                new LinearLayout.LayoutParams(dp(50), dp(50)));
-        playBtn = Ui.iconButton(this, R.drawable.ic_play, 66, true, () -> nowPlaying.playPause());
+        controls.addView(Ui.iconButton(this, R.drawable.ic_prev, 50, false,
+                () -> nowPlaying.skip(musicSource(), false)), new LinearLayout.LayoutParams(dp(50), dp(50)));
+        playBtn = Ui.iconButton(this, R.drawable.ic_play, 66, true, () -> nowPlaying.playPause(musicSource()));
         LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(dp(66), dp(66));
         plp.setMargins(dp(18), 0, dp(18), 0);
         controls.addView(playBtn, plp);
-        controls.addView(Ui.iconButton(this, R.drawable.ic_next, 50, false, () -> nowPlaying.skip(true)),
-                new LinearLayout.LayoutParams(dp(50), dp(50)));
+        controls.addView(Ui.iconButton(this, R.drawable.ic_next, 50, false,
+                () -> nowPlaying.skip(musicSource(), true)), new LinearLayout.LayoutParams(dp(50), dp(50)));
         bottom.addView(controls);
         card.addView(bottom, new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM));
 
         Ui.pressable(card, 0.98f);
-        card.setOnClickListener(v -> nowPlaying.open(this));
+        card.setOnClickListener(v -> nowPlaying.open(this, musicSource()));
+        applyMusicMode();
         return card;
+    }
+
+    private TextView musicChip(String text, boolean mp3) {
+        TextView t = Ui.text(this, text, 12, Color.WHITE);
+        t.setLetterSpacing(0.06f);
+        t.setPadding(dp(14), dp(6), dp(14), dp(6));
+        Ui.pressable(t, 0.94f);
+        t.setOnClickListener(v -> {
+            musicMp3 = mp3;
+            getSharedPreferences("ui", MODE_PRIVATE).edit().putBoolean("music_mp3", mp3).apply();
+            applyMusicMode();
+            onNowPlayingChanged();
+        });
+        return t;
+    }
+
+    /** Which player the card shows and controls. */
+    private NowPlaying.Source musicSource() {
+        return musicMp3 ? nowPlaying.mp3Source() : NowPlaying.Source.BT;
+    }
+
+    private void applyMusicMode() {
+        musicBg.setColors(musicMp3
+                ? new int[]{0xFF1C1C22, 0xFF0B0B0E}
+                : Ui.pick(this, new int[]{0xFF6A3BFF, 0xFFC04DE8, 0xFF2B1A7A},
+                        new int[]{0xFF2E1A55, 0xFF1A1030, 0xFF0A0A0E}));
+        musicBg.setStroke(musicMp3 ? dp(1) : 0, 0x22FFFFFF);
+        boombox.setVisibility(musicMp3 ? View.VISIBLE : View.GONE);
+        art.setVisibility(musicMp3 ? View.GONE : View.VISIBLE);
+        musicShade.setVisibility(musicMp3 ? View.GONE : View.VISIBLE);
+        songSource.setVisibility(musicMp3 ? View.VISIBLE : View.GONE);
+        styleMusicChip(chipMp3, musicMp3);
+        styleMusicChip(chipBt, !musicMp3);
+    }
+
+    private void styleMusicChip(TextView t, boolean on) {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(14));
+        bg.setColor(on ? (musicMp3 ? 0xFF00ACC1 : 0xE6FFFFFF) : 0x40000000);
+        t.setBackground(bg);
+        t.setTextColor(on && !musicMp3 ? 0xFF2A1F6E : Color.WHITE);
+        t.setAlpha(on ? 1f : 0.75f);
     }
 
     @Override
     public void onNowPlayingChanged() {
-        NowPlaying.Source s = nowPlaying.current();
-        NowPlaying.Track t = s == null ? null : nowPlaying.track(s);
+        NowPlaying.Source s = musicSource();
+        NowPlaying.Track t = nowPlaying.track(s);
         boolean empty = t == null || t.title.isEmpty();
-        songSource.setText(s == null ? "MÚSICA" : nowPlaying.label(s).toUpperCase());
-        songTitle.setText(empty ? "Nada sonando" : t.title);
-        songArtist.setText(empty ? "Toca para abrir la música" : t.artist);
+        songSource.setText(nowPlaying.label(s).toUpperCase());
+        songTitle.setText(empty ? (musicMp3 ? "Reproductor MP3" : "Bluetooth") : t.title);
+        songArtist.setText(empty ? (musicMp3 ? "Toca para abrir tu música" : "Conecta tu celular") : t.artist);
         playBtn.setImageResource(t != null && t.playing ? R.drawable.ic_pause : R.drawable.ic_play);
+        boombox.setPlaying(musicMp3 && t != null && t.playing);
+        if (musicMp3) return; // the boombox replaces the album art
 
         if (t != null && t.art != null) {
             art.setPadding(0, 0, 0, 0);

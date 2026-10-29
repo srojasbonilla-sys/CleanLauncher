@@ -219,8 +219,28 @@ final class NowPlaying {
         return "Música";
     }
 
+    /**
+     * The "MP3" side of the music card: the factory USB/SD player, or a music app with a media
+     * session (VLC, Musicolet…) if that is what was used more recently. Never Bluetooth.
+     */
+    Source mp3Source() {
+        if (app.updated > 0 && (app.playing || app.updated > local.updated) && !local.playing) return Source.APP;
+        return Source.LOCAL;
+    }
+
     void playPause() {
-        Source s = current();
+        playPause(current());
+    }
+
+    void skip(boolean next) {
+        skip(current(), next);
+    }
+
+    void open(Context c) {
+        open(c, current());
+    }
+
+    void playPause(Source s) {
         if (s == Source.BT) {
             if (Ui.radioIsSource(ctx)) {
                 // Radio has the speakers (the phone may even be playing muted): bring Bluetooth in.
@@ -238,8 +258,7 @@ final class NowPlaying {
         }
     }
 
-    void skip(boolean next) {
-        Source s = current();
+    void skip(Source s, boolean next) {
         if (s == Source.BT) {
             btClient.playControl(next ? BtClient.NEXT : BtClient.PREVIOUS);
         } else if (s == Source.APP && controller != null) {
@@ -250,16 +269,34 @@ final class NowPlaying {
         }
     }
 
-    /** Opens the screen that belongs to the current source. */
-    void open(Context c) {
-        Source s = current();
+    /** Opens the screen that belongs to the given source. */
+    void open(Context c, Source s) {
         if (s == Source.BT) {
             c.startActivity(new Intent(c, BtActivity.class));
         } else if (s == Source.APP && controller != null) {
             Intent i = c.getPackageManager().getLaunchIntentForPackage(controller.getPackageName());
             if (i != null) c.startActivity(i);
         } else {
-            Ui.launch(c, LOCAL_PLAYER);
+            openLocalPlayer(c);
+        }
+    }
+
+    /** The factory USB/SD player on NWD units; elsewhere the radio's default music app. */
+    private static void openLocalPlayer(Context c) {
+        try {
+            Intent i = new Intent(Intent.ACTION_MAIN);
+            i.addCategory(Intent.CATEGORY_LAUNCHER);
+            i.setComponent(ComponentName.unflattenFromString(LOCAL_PLAYER));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+            c.startActivity(i);
+            return;
+        } catch (Exception ignored) { }
+        try {
+            Intent i = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MUSIC);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            c.startActivity(i);
+        } catch (Exception e) {
+            android.widget.Toast.makeText(c, "No hay reproductor de música", android.widget.Toast.LENGTH_SHORT).show();
         }
     }
 
