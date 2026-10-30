@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
         android:label="Inicio"
@@ -84,6 +87,14 @@
             android:name=".OilActivity"
             android:label="Aceite"
             android:configChanges="orientation|screenSize|keyboardHidden|locale" />
+
+        <activity
+            android:name=".PlayerActivity"
+            android:label="Reproductor"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|keyboardHidden|locale" />
+
+        <service android:name=".MusicService" android:exported="false" />
 
         <service
             android:name=".HomeGuardService"

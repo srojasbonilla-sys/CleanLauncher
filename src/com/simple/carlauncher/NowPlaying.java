@@ -106,6 +106,7 @@ final class NowPlaying {
             switch (a) {
                 case "com.android.music.metachanged":
                 case "com.android.music.playstatechanged":
+                    if (MusicService.isPlaying()) return; // our own player owns the USB side
                     if (i.hasExtra("track")) local.title = nz(i.getStringExtra("track"));
                     if (i.hasExtra("artist")) local.artist = nz(i.getStringExtra("artist"));
                     local.playing = i.getBooleanExtra("playing", local.playing);
@@ -152,6 +153,7 @@ final class NowPlaying {
         if (list != null) {
             for (MediaController c : list) {
                 if ("com.android.server.telecom".equals(c.getPackageName())) continue;
+                if (ctx.getPackageName().equals(c.getPackageName())) continue; // our own player is LOCAL
                 if (pick == null) pick = c;
                 PlaybackState s = c.getPlaybackState();
                 if (s != null && s.getState() == PlaybackState.STATE_PLAYING) { pick = c; break; }
@@ -209,7 +211,7 @@ final class NowPlaying {
 
     String label(Source s) {
         if (s == Source.BT) return "Bluetooth";
-        if (s == Source.LOCAL) return "USB";
+        if (s == Source.LOCAL) return MusicService.hasSong(ctx) ? "Reproductor" : "USB";
         if (controller != null) {
             try {
                 PackageManager pm = ctx.getPackageManager();
@@ -230,6 +232,18 @@ final class NowPlaying {
 
     void playPause() {
         playPause(current());
+    }
+
+    /** Called by our own player on every change; shown as the LOCAL (USB) source. */
+    void ownPlayerChanged(MusicService.State s) {
+        boolean changed = !s.title.equals(local.title) || !s.artist.equals(local.artist)
+                || s.playing != local.playing || s.art != local.art;
+        local.title = s.title;
+        local.artist = s.artist;
+        local.art = s.art;
+        local.playing = s.playing;
+        if (s.playing || changed) local.updated = SystemClock.elapsedRealtime();
+        if (changed) notifyListeners(); // not every second for the progress
     }
 
     /** Package of the music app with the active media session, or null. */
@@ -268,6 +282,8 @@ final class NowPlaying {
         } else if (s == Source.APP && controller != null) {
             if (app.playing) controller.getTransportControls().pause();
             else controller.getTransportControls().play();
+        } else if (MusicService.hasSong(ctx)) {
+            MusicService.command(ctx, MusicService.ACTION_TOGGLE);
         } else {
             mediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
         }
@@ -279,6 +295,8 @@ final class NowPlaying {
         } else if (s == Source.APP && controller != null) {
             if (next) controller.getTransportControls().skipToNext();
             else controller.getTransportControls().skipToPrevious();
+        } else if (MusicService.hasSong(ctx)) {
+            MusicService.command(ctx, next ? MusicService.ACTION_NEXT : MusicService.ACTION_PREV);
         } else {
             mediaKey(next ? KeyEvent.KEYCODE_MEDIA_NEXT : KeyEvent.KEYCODE_MEDIA_PREVIOUS);
         }
@@ -292,7 +310,8 @@ final class NowPlaying {
             Intent i = c.getPackageManager().getLaunchIntentForPackage(controller.getPackageName());
             if (i != null) c.startActivity(i);
         } else {
-            openLocalPlayer(c);
+            // our own player replaces the factory USB player
+            c.startActivity(new Intent(c, PlayerActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         }
     }
 

@@ -146,6 +146,11 @@ public class GreeterService extends Service {
     }
 
     private void restoreAudio() {
+        if (MusicService.wasPlaying(this)) {
+            // our own player was on when the car was turned off: carry on, same song and second
+            MusicService.command(this, MusicService.ACTION_RESUME);
+            return;
+        }
         if (!Profile.isNwd(this)) {
             resumeMultimedia();
             return;
@@ -297,6 +302,8 @@ public class GreeterService extends Service {
         SharedPreferences.Editor e = prefs().edit();
         if (s == NowPlaying.Source.BT) {
             e.putString("resume", playing ? "bt" : "");
+        } else if (s == NowPlaying.Source.LOCAL && MusicService.hasSong(GreeterService.this)) {
+            e.putString("resume", ""); // our own player remembers and resumes by itself
         } else if (playing) {
             String pkg = s == NowPlaying.Source.APP ? np.appPackage() : null;
             e.putString("resume", pkg != null ? "app:" + pkg : "local");
