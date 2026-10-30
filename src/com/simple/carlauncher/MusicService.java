@@ -190,7 +190,7 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
             case ACTION_SHUFFLE: setShuffle(!state.shuffle); break;
             case ACTION_REPEAT: state.repeat = (state.repeat + 1) % 3; save(); changed(); break;
             case ACTION_RESUME: resumeAfterBoot(); break;
-            case ACTION_YIELD: pause(); session.setActive(false); break;
+            case ACTION_YIELD: pause(); release(); break;
             default: break;
         }
         return START_NOT_STICKY;
@@ -430,6 +430,13 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         changed();
     }
 
+    /** Gives up the audio and the media buttons so another player (Bluetooth, radio) can sound. */
+    private void release() {
+        session.setActive(false);
+        audio.abandonAudioFocus(this);
+        pausedByFocus = false;
+    }
+
     /** Next song; {@code user} = pressed by the user (wraps even with repeat off). */
     void next(boolean user) {
         if (queue.isEmpty()) return;
@@ -502,7 +509,7 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         switch (change) {
             case AudioManager.AUDIOFOCUS_LOSS:
                 pause(); // another player (radio, Bluetooth, an app) took over
-                session.setActive(false); // let the media buttons reach that player
+                release(); // let the media buttons and the audio go to that player
                 break;
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
                 if (state.playing) {
