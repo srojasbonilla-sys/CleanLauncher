@@ -43,12 +43,14 @@ public class HomeGuardService extends AccessibilityService {
     protected void onServiceConnected() {
         super.onServiceConnected();
         autoHomes = findOtherHomes(this);
+        prefs(this).edit().putLong("connected_at", System.currentTimeMillis()).apply();
     }
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent e) {
         if (e.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || e.getPackageName() == null) return;
         String pkg = e.getPackageName().toString();
+        prefs(this).edit().putLong("last_event", System.currentTimeMillis()).apply();
         if (pkg.equals(getPackageName()) || NEVER.contains(pkg)) {
             lastPkg = pkg;
             return;
@@ -59,6 +61,8 @@ public class HomeGuardService extends AccessibilityService {
         long now = SystemClock.elapsedRealtime();
         if (now - lastJump < 800) return; // one jump per press
         lastJump = now;
+        prefs(this).edit().putString("last_replaced", pkg)
+                .putLong("last_replaced_at", System.currentTimeMillis()).apply();
         Intent home = new Intent(this, MainActivity.class);
         home.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
         try {
@@ -115,6 +119,56 @@ public class HomeGuardService extends AccessibilityService {
         list.add(0, pkg);
         while (list.size() > RECENT_MAX) list.remove(list.size() - 1);
         prefs(c).edit().putString("recent", TextUtils.join(",", list)).apply();
+    }
+
+    /** Plain-language report of how the Home button is handled, for the diagnosis screen. */
+    static String report(Context c) {
+        PackageManager pm = c.getPackageManager();
+        StringBuilder sb = new StringBuilder();
+        Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+        ResolveInfo def = pm.resolveActivity(home, PackageManager.MATCH_DEFAULT_ONLY);
+        String defPkg = def == null || def.activityInfo == null ? "?" : def.activityInfo.packageName;
+        sb.append("1) Pantalla de inicio predeterminada:\n   ").append(label(pm, defPkg)).append(" (").append(defPkg).append(")")
+                .append(defPkg.equals(c.getPackageName()) ? "  ✓" : "  ✗ debería ser Inicio").append("\n\n");
+        SharedPreferences p = prefs(c);
+        long now = System.currentTimeMillis();
+        long conn = p.getLong("connected_at", 0), ev = p.getLong("last_event", 0);
+        sb.append("2) Servicio \"Botón ○ y encendido\": ").append(isEnabled(c) ? "activado ✓" : "DESACTIVADO ✗").append("\n");
+        sb.append("   Conectado: ").append(conn == 0 ? "nunca ✗" : ago(now - conn)).append("\n");
+        sb.append("   Último aviso recibido: ").append(ev == 0 ? "nunca ✗" : ago(now - ev)).append("\n");
+        String rep = p.getString("last_replaced", "");
+        if (!rep.isEmpty()) {
+            sb.append("   Último menú reemplazado: ").append(label(pm, rep)).append(", ")
+                    .append(ago(now - p.getLong("last_replaced_at", now))).append("\n");
+        }
+        sb.append("\n3) Otros launchers que reemplaza:\n");
+        for (String h : findOtherHomes(c)) sb.append("   • ").append(label(pm, h)).append(" (").append(h).append(")\n");
+        Set<String> ch = chosen(c);
+        if (!ch.isEmpty()) {
+            sb.append("   Marcados a mano:\n");
+            for (String h : ch) sb.append("   • ").append(label(pm, h)).append(" (").append(h).append(")\n");
+        }
+        sb.append("\n4) Últimas pantallas abiertas:\n");
+        List<String> rec = recent(c);
+        if (rec.isEmpty()) sb.append("   (ninguna: el servicio no está funcionando)\n");
+        for (String r : rec) sb.append("   • ").append(label(pm, r)).append(" (").append(r).append(")\n");
+        return sb.toString();
+    }
+
+    private static String label(PackageManager pm, String pkg) {
+        try {
+            return pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString();
+        } catch (Exception e) {
+            return pkg;
+        }
+    }
+
+    private static String ago(long ms) {
+        long s = Math.max(0, ms / 1000);
+        if (s < 60) return "hace " + s + " s";
+        if (s < 3600) return "hace " + (s / 60) + " min";
+        if (s < 86400) return "hace " + (s / 3600) + " h";
+        return "hace " + (s / 86400) + " días";
     }
 
     /** Whether the user has turned this service on in the accessibility settings. */

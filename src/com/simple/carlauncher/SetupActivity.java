@@ -127,6 +127,11 @@ public class SetupActivity extends Activity {
         card.addView(spaced(guardBtn));
         pickBtn = button("", 0x334F7BFF, this::pickFactoryMenu);
         card.addView(spaced(pickBtn));
+        card.addView(spaced(button("Diagnóstico del botón de inicio", 0x33FF9800, () ->
+                new android.app.AlertDialog.Builder(this)
+                        .setTitle("Diagnóstico (mándale una foto a Claude)")
+                        .setMessage(HomeGuardService.report(this))
+                        .setPositiveButton("Cerrar", null).show())));
         locationBtn = button("", 0x334F7BFF,
                 () -> requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1));
         card.addView(spaced(locationBtn));
