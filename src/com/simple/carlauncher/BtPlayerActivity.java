@@ -10,7 +10,6 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.os.Bundle;
 import android.view.Gravity;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextClock;
 import android.widget.TextView;
@@ -26,7 +25,7 @@ public class BtPlayerActivity extends Activity implements NowPlaying.Listener {
     private RecordView record;
     private WaveView wave;
     private TextView title, artist, status;
-    private ImageView playBtn;
+    private KnobButton playBtn;
     private String lastTitle;
 
     @Override
@@ -131,16 +130,17 @@ public class BtPlayerActivity extends Activity implements NowPlaying.Listener {
         LinearLayout controls = new LinearLayout(this);
         controls.setGravity(Gravity.CENTER);
         controls.setPadding(0, dp(22), 0, 0);
-        controls.addView(Ui.iconButton(this, R.drawable.ic_phone, 48, false, this::openFactoryBluetooth), sq(48, 0));
-        controls.addView(Ui.iconButton(this, R.drawable.ic_prev, 56, false,
-                () -> nowPlaying.skip(nowPlaying.btSource(), false)), sq(56, 22));
-        playBtn = Ui.iconButton(this, R.drawable.ic_play, 78, true,
+        // turntable-style chrome knobs
+        controls.addView(new KnobButton(this, R.drawable.ic_phone, false, this::openFactoryBluetooth), sq(54, 0));
+        controls.addView(new KnobButton(this, R.drawable.ic_prev, false,
+                () -> nowPlaying.skip(nowPlaying.btSource(), false)), sq(62, 18));
+        playBtn = new KnobButton(this, R.drawable.ic_play, true,
                 () -> nowPlaying.playPause(nowPlaying.btSource()));
-        controls.addView(playBtn, sq(78, 22));
-        controls.addView(Ui.iconButton(this, R.drawable.ic_next, 56, false,
-                () -> nowPlaying.skip(nowPlaying.btSource(), true)), sq(56, 22));
-        controls.addView(Ui.iconButton(this, R.drawable.ic_bluetooth, 48, false,
-                () -> safeStart(new Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS))), sq(48, 22));
+        controls.addView(playBtn, sq(92, 18));
+        controls.addView(new KnobButton(this, R.drawable.ic_next, false,
+                () -> nowPlaying.skip(nowPlaying.btSource(), true)), sq(62, 18));
+        controls.addView(new KnobButton(this, R.drawable.ic_bluetooth, false,
+                () -> safeStart(new Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS))), sq(54, 18));
         info.addView(controls, new LinearLayout.LayoutParams(-1, -2));
         body.addView(info, new LinearLayout.LayoutParams(0, -2, 1f));
 
@@ -171,7 +171,7 @@ public class BtPlayerActivity extends Activity implements NowPlaying.Listener {
         title.setText(empty ? "Bluetooth" : tr.title);
         artist.setText(empty ? "Pon música en tu celular" : tr.artist);
         status.setText(tr.playing ? "SONANDO DESDE TU CELULAR" : empty ? "ESPERANDO AL CELULAR" : "EN PAUSA");
-        playBtn.setImageResource(tr.playing ? R.drawable.ic_pause : R.drawable.ic_play);
+        playBtn.setIcon(tr.playing ? R.drawable.ic_pause : R.drawable.ic_play);
         if (lastTitle != null && !empty && !tr.title.equals(lastTitle)) record.cue(); // arm moves on a new song
         lastTitle = tr.title;
         record.setPlaying(tr.playing);
