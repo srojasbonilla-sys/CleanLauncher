@@ -28,6 +28,7 @@ public class Odometer extends Service implements LocationListener {
     private LocationManager lm;
     private Location last;
     private float pendingMeters;
+    private final GpsSpeed speed = new GpsSpeed();
 
     @Override
     public void onCreate() {
@@ -51,16 +52,17 @@ public class Odometer extends Service implements LocationListener {
 
     @Override
     public void onLocationChanged(Location l) {
+        float kmh = speed.update(l); // filtered: no bursts from GPS jumps
         if (!l.hasAccuracy() || l.getAccuracy() > 25) return;
         if (last != null) {
             float d = last.distanceTo(l);
             float secs = Math.max(1, (l.getTime() - last.getTime()) / 1000f);
-            float kmh = d / secs * 3.6f;
-            boolean moving = (l.hasSpeed() ? l.getSpeed() * 3.6f : kmh) > 4;
-            // Count only real driving; drop parked drift and impossible jumps.
-            if (moving && kmh < 200) {
+            // Count only real driving, and only a distance that fits the filtered speed
+            // (a position jump while parked or with weak signal is not driving).
+            float expected = kmh / 3.6f * secs;
+            if (kmh > 4 && secs <= 10 && d <= expected * 1.8f + 15) {
                 pendingMeters += d;
-                addToTrip(d, Math.min(secs, 10), l.hasSpeed() ? l.getSpeed() * 3.6f : kmh);
+                addToTrip(d, secs, kmh);
             }
         }
         last = l;

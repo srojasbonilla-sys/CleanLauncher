@@ -42,7 +42,7 @@ import java.util.Locale;
  */
 public class SpeedActivity extends Activity implements LocationListener {
 
-    private static final long STALE_MS = 5000;
+    private static final long STALE_MS = 12000; // brief signal drops keep the last speed
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private LocationManager lm;
@@ -351,7 +351,7 @@ public class SpeedActivity extends Activity implements LocationListener {
         accuracy.setText(l.hasAccuracy() ? "± " + Math.round(l.getAccuracy()) + " m" : "--");
         GradientDrawable chip = new GradientDrawable();
         chip.setCornerRadius(dp(14));
-        boolean good = l.hasAccuracy() && l.getAccuracy() <= 15;
+        boolean good = l.hasAccuracy() && l.getAccuracy() <= 15 && !gps.weak();
         chip.setColor(good ? 0x552ECC71 : 0x55FF9800);
         gpsChip.setBackground(chip);
         gpsChip.setText(good ? "GPS: buena señal" : "GPS: señal débil");

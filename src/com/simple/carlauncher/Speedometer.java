@@ -29,7 +29,7 @@ final class Speedometer extends View implements LocationListener {
 
     private static final int MAX_KMH = 160;
     private static final int WARN_KMH = 90;
-    private static final long STALE_MS = 5000;
+    private static final long STALE_MS = 12000; // brief signal drops keep the last speed
     private static final float START = 150f, SWEEP = 240f;
 
     private final Paint track = new Paint(Paint.ANTI_ALIAS_FLAG);
