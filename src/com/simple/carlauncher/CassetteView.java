@@ -32,7 +32,7 @@ final class CassetteView extends View {
     private final float d;
 
     private String title = "", artist = "", type = "";
-    private int position, duration;
+    private int position, duration, total;
     private boolean playing;
     private float spin;      // reel rotation, degrees
     private ValueAnimator anim;
@@ -48,6 +48,7 @@ final class CassetteView extends View {
         type = s.hasSong ? s.type : "";
         position = s.position;
         duration = s.duration;
+        total = s.hasSong ? s.total : 0;
         if (s.playing != playing) {
             playing = s.playing;
             if (playing) start();
@@ -228,10 +229,11 @@ final class CassetteView extends View {
         tp.setTextSize(3.2f * u);
         tp.setTextAlign(Paint.Align.LEFT);
         tp.setColor(0xFFE53935);
-        c.drawText("Hi-Fi 90", x0 + 6 * u, y0 + 50 * u, tp);
+        c.drawText("Hi-Fi STEREO", x0 + 6 * u, y0 + 50 * u, tp);
         tp.setTextAlign(Paint.Align.RIGHT);
         tp.setColor(0x99FFFFFF);
-        c.drawText("SANTY MIX", x0 + w - 6 * u, y0 + 50 * u, tp);
+        // play time of the whole folder, like the minutes printed on a real tape
+        if (total > 0) c.drawText("TOTAL " + fmt(total), x0 + w - 6 * u, y0 + 50 * u, tp);
         tp.setTextAlign(Paint.Align.LEFT);
     }
 

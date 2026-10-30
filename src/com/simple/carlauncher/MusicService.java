@@ -61,6 +61,7 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         Bitmap art;
         boolean playing, hasSong, shuffle;
         int repeat = REPEAT_ALL, position, duration, index, count;
+        int total; // play time of the whole folder (0 while it is being measured)
     }
 
     private final State state = new State();
@@ -116,6 +117,7 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
             s.type = MusicLibrary.type(f);
             s.position = p.getInt("position", 0);
             s.duration = p.getInt("duration", 0);
+            s.total = p.getInt("total", 0);
         }
         s.shuffle = p.getBoolean("shuffle", false);
         s.repeat = p.getInt("repeat", REPEAT_ALL);
@@ -225,7 +227,38 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         state.index = Math.max(0, Math.min(p.getInt("index", 0), Math.max(0, queue.size() - 1)));
         pendingSeek = p.getInt("position", 0);
         state.count = queue.size();
+        state.total = p.getInt("total", 0);
         if (!queue.isEmpty()) load(state.index, false);
+        if (state.total == 0 && !original.isEmpty()) measureTotal();
+    }
+
+    private int totalGeneration;
+
+    /** Adds up the length of every song in the folder, in the background. */
+    private void measureTotal() {
+        final int gen = ++totalGeneration;
+        final List<String> files = new ArrayList<>(original);
+        state.total = 0;
+        new Thread(() -> {
+            long sum = 0;
+            MediaMetadataRetriever r = new MediaMetadataRetriever();
+            for (String f : files) {
+                if (gen != totalGeneration) break; // another folder was chosen meanwhile
+                try {
+                    r.setDataSource(f);
+                    String d = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                    if (d != null) sum += Long.parseLong(d.trim());
+                } catch (Exception ignored) { }
+            }
+            try { r.release(); } catch (Exception ignored) { }
+            final int total = (int) Math.min(Integer.MAX_VALUE, sum);
+            handler.post(() -> {
+                if (gen != totalGeneration) return;
+                state.total = total;
+                prefs(this).edit().putInt("total", total).apply();
+                changed();
+            });
+        }, "folder-length").start();
     }
 
     private void setQueue(List<String> paths, int start) {
@@ -240,6 +273,7 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         state.count = queue.size();
         pendingSeek = 0;
         load(queue.indexOf(first), true);
+        measureTotal();
     }
 
     private void setShuffle(boolean on) {
