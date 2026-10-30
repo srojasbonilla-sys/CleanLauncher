@@ -269,7 +269,27 @@ final class NowPlaying {
         open(c, current());
     }
 
+    /**
+     * Where the phone's Bluetooth music shows up: NWD units report it directly (BT); on other
+     * radios the factory Bluetooth app may publish it as a media session (APP).
+     */
+    Source btSource() {
+        if (Profile.isNwd(ctx) || bt.updated > 0) return Source.BT;
+        if (controller != null && isBluetoothApp(controller.getPackageName())) return Source.APP;
+        return Source.BT;
+    }
+
+    private static boolean isBluetoothApp(String pkg) {
+        String p = pkg.toLowerCase();
+        return p.contains("bluetooth") || p.contains(".bt") || p.contains("btmusic") || p.contains("a2dp")
+                || p.contains("phonelink") || p.contains("bt.") || p.contains("goc") || p.contains("fyt");
+    }
+
     void playPause(Source s) {
+        if (s == Source.BT && !Profile.isNwd(ctx)) {
+            mediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE); // the factory Bluetooth app takes the media keys
+            return;
+        }
         if (s == Source.BT) {
             if (Ui.radioIsSource(ctx)) {
                 // Radio has the speakers (the phone may even be playing muted): bring Bluetooth in.
@@ -290,6 +310,10 @@ final class NowPlaying {
     }
 
     void skip(Source s, boolean next) {
+        if (s == Source.BT && !Profile.isNwd(ctx)) {
+            mediaKey(next ? KeyEvent.KEYCODE_MEDIA_NEXT : KeyEvent.KEYCODE_MEDIA_PREVIOUS);
+            return;
+        }
         if (s == Source.BT) {
             btClient.playControl(next ? BtClient.NEXT : BtClient.PREVIOUS);
         } else if (s == Source.APP && controller != null) {
@@ -304,8 +328,9 @@ final class NowPlaying {
 
     /** Opens the screen that belongs to the given source. */
     void open(Context c, Source s) {
-        if (s == Source.BT) {
-            c.startActivity(new Intent(c, BtActivity.class));
+        if (s == Source.BT || (s == Source.APP && s == btSource() && controller != null
+                && isBluetoothApp(controller.getPackageName()))) {
+            c.startActivity(new Intent(c, BtPlayerActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         } else if (s == Source.APP && controller != null) {
             Intent i = c.getPackageManager().getLaunchIntentForPackage(controller.getPackageName());
             if (i != null) c.startActivity(i);

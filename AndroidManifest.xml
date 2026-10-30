@@ -94,6 +94,12 @@
             android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|keyboardHidden|locale" />
 
+        <activity
+            android:name=".BtPlayerActivity"
+            android:label="Bluetooth"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|keyboardHidden|locale" />
+
         <service android:name=".MusicService" android:exported="false" />
 
         <service

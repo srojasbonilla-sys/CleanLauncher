@@ -55,6 +55,7 @@ public class MainActivity extends Activity implements NowPlaying.Listener {
     // Music card mode: Multimedia (USB player / music apps, record-player look; the default) or Bluetooth.
     private boolean musicMp3;
     private TurntableView turntable;
+    private String lastSongKey;
     private View musicShade;
     private GradientDrawable musicBg;
     private TextView chipMp3, chipBt;
@@ -470,7 +471,7 @@ public class MainActivity extends Activity implements NowPlaying.Listener {
 
     /** Which player the card shows and controls. */
     private NowPlaying.Source musicSource() {
-        return musicMp3 ? nowPlaying.mp3Source() : NowPlaying.Source.BT;
+        return musicMp3 ? nowPlaying.mp3Source() : nowPlaying.btSource();
     }
 
     private void applyMusicMode() {
@@ -505,6 +506,9 @@ public class MainActivity extends Activity implements NowPlaying.Listener {
         songTitle.setText(empty ? (musicMp3 ? "Multimedia" : "Bluetooth") : t.title);
         songArtist.setText(empty ? (musicMp3 ? "Toca para abrir tu música" : "Conecta tu celular") : t.artist);
         playBtn.setImageResource(t != null && t.playing ? R.drawable.ic_pause : R.drawable.ic_play);
+        String key = s + "|" + (t == null ? "" : t.title);
+        if (lastSongKey != null && !key.equals(lastSongKey) && t != null && !t.title.isEmpty()) turntable.cue();
+        lastSongKey = key;
         turntable.setPlaying(musicMp3 && t != null && t.playing);
         turntable.setArt(t != null ? t.art : null);
         if (musicMp3) return; // the record player replaces the big album art

@@ -30,6 +30,7 @@ final class TurntableView extends View {
     private final float d;
 
     private boolean playing;
+    private float cue; // seconds left of a "change track" arm move
     private float angle;      // record rotation, degrees
     private float speed;      // 0..1 of full speed (spins up / down smoothly)
     private float arm;        // 0 = resting, 1 = on the record
@@ -44,6 +45,13 @@ final class TurntableView extends View {
     void setPlaying(boolean on) {
         if (on == playing) return;
         playing = on;
+        start();
+    }
+
+    /** New song: the arm lifts, swings out and drops back onto the record. */
+    void cue() {
+        if (arm < 0.5f) return;
+        cue = 1.3f;
         start();
     }
 
@@ -66,13 +74,17 @@ final class TurntableView extends View {
             float dt = Math.min(0.1f, (now - last[0]) / 1e9f);
             last[0] = now;
             float targetArm = playing ? 1f : 0f;
-            arm += Math.signum(targetArm - arm) * Math.min(Math.abs(targetArm - arm), dt * 1.4f);
+            if (cue > 0) {
+                cue -= dt;
+                targetArm = cue > 0.6f ? 0.2f : 1f;
+            }
+            arm += Math.signum(targetArm - arm) * Math.min(Math.abs(targetArm - arm), dt * (cue > 0 ? 2.6f : 1.4f));
             // the record only spins up once the needle is down, and coasts to a stop on pause
             float targetSpeed = playing && arm > 0.95f ? 1f : 0f;
             speed += (targetSpeed - speed) * Math.min(1f, dt * (playing ? 2.5f : 1.2f));
             angle = (angle + speed * RPM * 6f * dt) % 360f;
             invalidate();
-            if (!playing && arm <= 0f && speed < 0.01f) {
+            if (!playing && cue <= 0 && arm <= 0f && speed < 0.01f) {
                 speed = 0;
                 a.cancel();
             }

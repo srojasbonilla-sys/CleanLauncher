@@ -43,7 +43,8 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
     private static final String TAG = "MusicService";
     static final String ACTION_PLAY_QUEUE = "play_queue", ACTION_TOGGLE = "toggle", ACTION_PLAY = "play",
             ACTION_PAUSE = "pause", ACTION_NEXT = "next", ACTION_PREV = "prev", ACTION_RESUME = "resume",
-            ACTION_SEEK = "seek", ACTION_SHUFFLE = "shuffle", ACTION_REPEAT = "repeat";
+            ACTION_SEEK = "seek", ACTION_SHUFFLE = "shuffle", ACTION_REPEAT = "repeat",
+            ACTION_YIELD = "yield"; // pause and hand the media buttons to another player (Bluetooth)
     static final int REPEAT_OFF = 0, REPEAT_ALL = 1, REPEAT_ONE = 2;
     private static final int NOTIFY_ID = 7;
 
@@ -189,6 +190,7 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
             case ACTION_SHUFFLE: setShuffle(!state.shuffle); break;
             case ACTION_REPEAT: state.repeat = (state.repeat + 1) % 3; save(); changed(); break;
             case ACTION_RESUME: resumeAfterBoot(); break;
+            case ACTION_YIELD: pause(); session.setActive(false); break;
             default: break;
         }
         return START_NOT_STICKY;
@@ -410,6 +412,7 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         int r = audio.requestAudioFocus(this, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
         if (r != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) Log.w(TAG, "audio focus not granted, playing anyway");
         if (Profile.isNwd(this)) Ui.requestSource(this, Ui.SOURCE_MUSIC); // NWD: route Android audio to the speakers
+        session.setActive(true);
         player.start();
         pausedByFocus = false;
         state.playing = true;
@@ -499,6 +502,7 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         switch (change) {
             case AudioManager.AUDIOFOCUS_LOSS:
                 pause(); // another player (radio, Bluetooth, an app) took over
+                session.setActive(false); // let the media buttons reach that player
                 break;
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
                 if (state.playing) {
