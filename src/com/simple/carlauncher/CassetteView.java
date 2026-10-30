@@ -232,8 +232,6 @@ final class CassetteView extends View {
         c.drawText("Hi-Fi STEREO", x0 + 6 * u, y0 + 50 * u, tp);
         tp.setTextAlign(Paint.Align.RIGHT);
         tp.setColor(0x99FFFFFF);
-        // play time of the whole folder, like the minutes printed on a real tape
-        if (total > 0) c.drawText("TOTAL " + fmt(total), x0 + w - 6 * u, y0 + 50 * u, tp);
         tp.setTextAlign(Paint.Align.LEFT);
     }
 

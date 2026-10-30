@@ -229,7 +229,6 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         state.count = queue.size();
         state.total = p.getInt("total", 0);
         if (!queue.isEmpty()) load(state.index, false);
-        if (state.total == 0 && !original.isEmpty()) measureTotal();
     }
 
     private int totalGeneration;
@@ -273,7 +272,6 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         state.count = queue.size();
         pendingSeek = 0;
         load(queue.indexOf(first), true);
-        measureTotal();
     }
 
     private void setShuffle(boolean on) {
