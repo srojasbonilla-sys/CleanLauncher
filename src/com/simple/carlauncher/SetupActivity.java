@@ -127,6 +127,18 @@ public class SetupActivity extends Activity {
         card.addView(spaced(guardBtn));
         pickBtn = button("", 0x334F7BFF, this::pickFactoryMenu);
         card.addView(spaced(pickBtn));
+        if (Profile.isNwd(this)) {
+            card.addView(spaced(button("Proteger Inicio del cierre al apagar (NWD)", 0x33FF9800, () -> {
+                String r = NwdWhitelist.tryAdd(this);
+                boolean ok = NwdWhitelist.isListed(this);
+                new android.app.AlertDialog.Builder(this)
+                        .setTitle(ok ? "Protegido ✓" : "No se pudo desde la app")
+                        .setMessage(ok ? r + "\n\nApaga y prende el carro una vez para que el radio lo lea."
+                                : r + "\n\nEl radio no deja escribir esos archivos desde una app. Se hace una sola vez "
+                                + "con una computadora (ADB):\n\n" + NwdWhitelist.adbCommands(this))
+                        .setPositiveButton("Cerrar", null).show();
+            })));
+        }
         card.addView(spaced(button("Diagnóstico del botón de inicio", 0x33FF9800, () ->
                 new android.app.AlertDialog.Builder(this)
                         .setTitle("Diagnóstico (mándale una foto a Claude)")

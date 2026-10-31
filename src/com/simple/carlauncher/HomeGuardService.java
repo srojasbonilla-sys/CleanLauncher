@@ -148,6 +148,10 @@ public class HomeGuardService extends AccessibilityService {
             sb.append("   Marcados a mano:\n");
             for (String h : ch) sb.append("   • ").append(label(pm, h)).append(" (").append(h).append(")\n");
         }
+        if (new java.io.File(NwdWhitelist.DIR).isDirectory()) {
+            sb.append("\n5) Protección contra el cierre al apagar (NWD): ")
+                    .append(NwdWhitelist.isListed(c) ? "sí ✓" : "NO ✗ (el radio cierra Inicio y apaga el servicio)").append("\n");
+        }
         sb.append("\n4) Últimas pantallas abiertas:\n");
         List<String> rec = recent(c);
         if (rec.isEmpty()) sb.append("   (ninguna: el servicio no está funcionando)\n");
@@ -173,7 +177,15 @@ public class HomeGuardService extends AccessibilityService {
 
     /** Whether the user has turned this service on in the accessibility settings. */
     static boolean isEnabled(Context c) {
-        String on = Settings.Secure.getString(c.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
-        return on != null && on.contains(c.getPackageName() + "/");
+        // ask the system which services are really running (the setting text can be stale)
+        android.view.accessibility.AccessibilityManager am =
+                (android.view.accessibility.AccessibilityManager) c.getSystemService(Context.ACCESSIBILITY_SERVICE);
+        if (am == null) return false;
+        for (android.accessibilityservice.AccessibilityServiceInfo i :
+                am.getEnabledAccessibilityServiceList(android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK)) {
+            if (i.getResolveInfo() != null && i.getResolveInfo().serviceInfo != null
+                    && c.getPackageName().equals(i.getResolveInfo().serviceInfo.packageName)) return true;
+        }
+        return false;
     }
 }

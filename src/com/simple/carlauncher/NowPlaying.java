@@ -291,8 +291,10 @@ final class NowPlaying {
             return;
         }
         if (s == Source.BT) {
-            if (Ui.radioIsSource(ctx)) {
-                // Radio has the speakers (the phone may even be playing muted): bring Bluetooth in.
+            if (!Ui.btIsSource(ctx)) {
+                // Radio or the USB player has the speakers (the phone may even be playing muted):
+                // switch the amplifier to Bluetooth and start the phone.
+                if (MusicService.isPlaying()) MusicService.command(ctx, MusicService.ACTION_YIELD);
                 Ui.userChoseRadioAt = 0;
                 Ui.selectBluetooth(ctx);
                 btClient.playControl(BtClient.PLAY);
@@ -315,6 +317,10 @@ final class NowPlaying {
             return;
         }
         if (s == Source.BT) {
+            if (!Ui.btIsSource(ctx)) {
+                if (MusicService.isPlaying()) MusicService.command(ctx, MusicService.ACTION_YIELD);
+                Ui.selectBluetooth(ctx); // changing song on Bluetooth: make it audible too
+            }
             btClient.playControl(next ? BtClient.NEXT : BtClient.PREVIOUS);
         } else if (s == Source.APP && controller != null) {
             if (next) controller.getTransportControls().skipToNext();

@@ -34,6 +34,8 @@ public class BtPlayerActivity extends Activity implements NowPlaying.Listener {
         nowPlaying = NowPlaying.get(this);
         // our own player gives the speakers and the media buttons to Bluetooth
         if (MusicService.hasSong(this)) MusicService.command(this, MusicService.ACTION_YIELD);
+        // NWD: put the amplifier on Bluetooth music so the phone is heard
+        if (Profile.isNwd(this) && !Ui.btIsSource(this)) Ui.selectBluetooth(this);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);

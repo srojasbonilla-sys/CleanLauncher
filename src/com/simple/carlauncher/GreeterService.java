@@ -57,6 +57,10 @@ public class GreeterService extends Service {
         f.addAction("com.bt.ACTION_BT_MUSIC_PAUSE");
         f.addAction("com.simple.carlauncher.TEST_CAR_ON"); // adb test hook
         registerReceiver(events, f);
+        if (Profile.isNwd(this)) {
+            // keep the radio from force-stopping the launcher at power off (when it lets us)
+            new Thread(() -> { if (!NwdWhitelist.isListed(this)) NwdWhitelist.tryAdd(this); }, "nwd-whitelist").start();
+        }
         // When the car is turned back on after a short stop the unit only wakes up (no reboot),
         // and some units then show their factory launcher. Come back to the front on wake too.
         android.content.IntentFilter wake = new android.content.IntentFilter(Intent.ACTION_SCREEN_ON);
@@ -113,8 +117,8 @@ public class GreeterService extends Service {
                 boolean started = !btPlaying;
                 btPlaying = true;
                 long sinceRadio = android.os.SystemClock.elapsedRealtime() - Ui.userChoseRadioAt;
-                if (started && Ui.radioIsSource(GreeterService.this) && sinceRadio > 30_000) {
-                    Log.d(TAG, "BT music started over the radio, switching to Bluetooth");
+                if (started && !Ui.btIsSource(GreeterService.this) && !MusicService.isPlaying() && sinceRadio > 30_000) {
+                    Log.d(TAG, "BT music started over another source, switching to Bluetooth");
                     Ui.selectBluetooth(GreeterService.this);
                 }
             } else if (waitingForPhone) {

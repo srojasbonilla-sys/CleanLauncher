@@ -174,6 +174,12 @@ final class Ui {
      * amplifier. Announcing the BT music app (KernelUtils.appStart: id 15, op 1, event 0) is what
      * the factory apps do and routes the music properly.
      */
+    /** NWD: whether the amplifier is on Bluetooth music right now. */
+    static boolean btIsSource(Context c) {
+        return android.provider.Settings.System.getInt(c.getContentResolver(), "mcu_current_source", 0)
+                == SOURCE_BT_MUSIC;
+    }
+
     static void selectBluetooth(Context c) {
         Intent i = new Intent("com.nwd.action.ACTION_APP_IN_OUT");
         i.putExtra("extra_app_id", 15);
